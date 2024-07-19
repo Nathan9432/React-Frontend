@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import PersonModal from './components/PersonModal.js';
-import TaskModal from './components/TaskModal';
+import TaskModal from './components/TaskModal.js';
+import ErrorModal from './components/ErrorModal.js'
+import PersonTasksModal from './components/PersonTasksModal.js'
 import axios from "axios";
 
 class App extends Component {
@@ -13,6 +15,8 @@ class App extends Component {
       peopleList: [],
       personModal: false,
       taskModal: false,
+      errorModal: false,
+      personTaskModal: false,
       activePerson: {
         id: null,
         name: "",
@@ -52,7 +56,19 @@ class App extends Component {
     this.setState({ personModal: !this.state.personModal });
   }
 
+  getPersonMissingString = (name, role) => {
+    if (name === "" && role === "")  return "name and role";
+    if (name === "") return "name";
+    return "role";
+  }
+
   handleSubmitPerson = (person) => {
+    if (person.name === "" || person.role === "") {
+      this.setState({ message: `Please fill in the person's ${this.getPersonMissingString(person.name, person.role)}.` });
+      this.toggleErrorModal();
+      return;
+    }
+    
     this.togglePersonModal();
 
     if (person.id) {
@@ -91,7 +107,19 @@ class App extends Component {
     this.setState({ taskModal: !this.state.taskModal });
   }
 
+  getTaskMissingString = (title, description) => {
+    if (title === "" && description === "")  return "title and description";
+    if (title === "") return "title";
+    return "description";
+  }
+
   handleSubmitTask = (task) => {
+    if (task.title === "" || task.description === "") {
+      this.setState({ message: `Please fill in the task's ${this.getTaskMissingString(task.title, task.description)}.` });
+      this.toggleErrorModal();
+      return;
+    }
+    
     this.toggleTaskModal();
 
     if (task.id) {
@@ -124,20 +152,27 @@ class App extends Component {
     this.setState({ activeTask: task, taskModal: !this.state.taskModal, peopleList: this.state.peopleList });
   }
 
-  displayPeople = (status) => {
-    if (status) {
-      return this.setState({ viewPeople: true });
-    }
+  // Other modals
+  toggleErrorModal = () => {
+    return this.setState({ errorModal: !this.state.errorModal });
+  }
 
-    return this.setState({ viewPeople: false });
+  handlePersonTaskModal = (person) => {
+    this.setState({ PTperson: person, PTtaskList: this.state.taskList.filter(
+      (task) => task.assignedTo === person?.id
+    ), personTaskModal: !this.state.personTaskModal });
+  }
+
+  togglePersonTasksModal = () => {
+    return this.setState({ personTaskModal: !this.state.personTaskModal });
+  }
+
+  displayPeople = (status) => {
+    return this.setState({ viewPeople: status });
   }
 
   displayCompleted = (status) => {
-    if (status) {
-      return this.setState({ viewCompleted: true });
-    }
-
-    return this.setState({ viewCompleted: false });
+    return this.setState({ viewCompleted: status });
   }
 
   renderOverallTabsList = () => {
@@ -199,6 +234,12 @@ class App extends Component {
           <span>
             <button
               className="btn btn-secondary mr-2"
+              onClick={() => this.handlePersonTaskModal(person)}
+            >
+              Show Tasks
+            </button>
+            <button
+              className="btn btn-secondary mr-2"
               onClick={() => this.editPerson(person)}
             >
               Edit
@@ -249,6 +290,28 @@ class App extends Component {
     }
   };
 
+  renderUnassigned = () => {
+    return (
+      <li
+          className="list-group-item d-flex justify-content-between align-tiems-center"
+        >
+          <span
+            className="todo-title mr-2"
+          >
+            
+          </span>
+          <span>
+            <button
+              className="btn btn-secondary mr-2"
+              onClick={() => this.handlePersonTaskModal({id: null})}
+            >
+              Show Unassigned Tasks
+            </button>
+          </span>
+        </li>
+    )
+  }
+
   render() {
     const { viewPeople } = this.state;
     return (
@@ -269,6 +332,7 @@ class App extends Component {
               {!viewPeople && this.renderTaskTabList() }
               <ul className="list-group list-group-flush border-top-0">
                 {this.renderItems()}
+                {viewPeople ? this.renderUnassigned(): null}
               </ul>
             </div>
           </div>
@@ -286,7 +350,19 @@ class App extends Component {
             toggle={this.toggleTaskModal}
             onSave={this.handleSubmitTask}
           />
-        ) : null}
+        ) : this.state.personTaskModal ? (
+          <PersonTasksModal
+            person={this.state.PTperson}
+            taskList={this.state.PTtaskList}
+            toggle={this.togglePersonTasksModal}
+          />
+        ) : null }
+        {this.state.errorModal ? (
+          <ErrorModal
+            message={this.state.message}
+            toggle={this.toggleErrorModal}
+          />
+        ) : null }
       </main>
     );
   }
